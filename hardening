@@ -1,311 +1,180 @@
---- 
-
-- name: Simulation not strict system hardening playbook 
-
-  hosts: all 
-
-  become: yes 
-
-  vars: 
-
-    backup_dir: /var/backups/hardening 
-
-  
-
-  tasks: 
-
-  
-
-    # ========================= 
-
-    # Backup Critical Configs 
-
-    # ========================= 
-
-  
-
-    - name: 1. Create backup directory 
-
-      file: 
-
-        path: "{{ backup_dir }}" 
-
-        state: directory 
-
-        mode: '0755' 
-
-     # check_mode: yes 
-
-  
-
-    - name: 2. Backup SSH configuration 
-
-      copy: 
-
-        src: /etc/ssh/sshd_config 
-
-        dest: "{{ backup_dir }}/sshd_config.bak" 
-
-        remote_src: yes 
-
-     # check_mode: yes 
-
-  
-
-    - name: 4. Backup passwd, shadow, gshadow 
-
-      copy: 
-
-        src: "{{ item }}" 
-
-        dest: "{{ backup_dir }}/{{ item | basename }}.bak" 
-
-        remote_src: yes 
-
-      loop: 
-
-        - /etc/passwd 
-
-        - /etc/shadow 
-
-        - /etc/gshadow 
-
-    #  check_mode: yes 
-
-  
-
-    # ========================= 
-
-    # SSH Hardening  - Safe, allows root/password) 
-
-    # ========================= 
-
-  
-
-    - name: 5. Enabling SSH key authentication 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?PubkeyAuthentication' 
-
-        line: 'PubkeyAuthentication yes' 
-
-     # check_mode: yes 
-
-  
-
-    - name: 6.  Root login via SSH 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?PermitRootLogin' 
-
-        line: 'PermitRootLogin yes' 
-
-     # check_mode: yes 
-
-  
-
-    - name: 7. Enabling password authentication 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?PasswordAuthentication' 
-
-        line: 'PasswordAuthentication yes' 
-
-     # check_mode: yes 
-
-  
-
-    - name: 8.  SSH idle timeout 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?ClientAliveInterval' 
-
-        line: 'ClientAliveInterval 300' 
-
-     # check_mode: yes 
-
-  
-
-    - name: 9.  SSH max sessions 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?MaxSessions' 
-
-        line: 'MaxSessions 10' 
-
-      #check_mode: yes 
-
-  
-
-    - name: 10. Enabling SSH logging verbosity 
-
-      lineinfile: 
-
-        path: /etc/ssh/sshd_config 
-
-        regexp: '^#?LogLevel' 
-
-        line: 'LogLevel VERBOSE' 
-
-      #check_mode: yes 
-
-  
-
-    - name: 11. Validate SSH configuration 
-
-      command: sshd -t 
-
-      register: sshd_validation 
-
-      ignore_errors: yes 
-
-  
-
-    - name: 12. Show SSH config validation result 
-
-      debug: 
-
-        var: sshd_validation.stdout 
-
-  
-
-    # ========================= 
-
-    # Package / Updates 
-
-    # ========================= 
-
-  
-
-    - name: 13. Updating all packages 
-
-      package: 
-
-        name: '*' 
-
-        state: latest 
-
-     # check_mode: yes 
-
-  
-
-    - name: 14. Installing automatic updates (Ubuntu) 
-
-      package: 
-
-        name: unattended-upgrades 
-
-        state: present 
-
-      when: ansible_os_family == "Debian" 
-
-     # check_mode: yes 
-
-  
-
-    # ========================= 
-
-    # Firewall  
-
-    # ========================= 
-
-    
-
-    - name: Allow HTTP and HTTPS in firewalld 
-
-      firewalld: 
-
-        port: "{{ item }}/tcp" 
-
-        permanent: yes 
-
-        state: enabled 
-
-      loop: 
-
-        - 80 
-
-        - 443 
-
-      when: ansible_os_family == "RedHat" 
-
-  
-
-    - name: Allow HTTP and HTTPS in UFW 
-
-      ufw: 
-
-        rule: allow 
-
-        port: "{{ item }}" 
-
-        proto: tcp 
-
-      loop: 
-
-        - 80 
-
-        - 443 
-
-      when: ansible_os_family == "Debian"  
-
-  
-
-  
-
-    # ========================= 
-
-    # File Permissions (Simulation) 
-
-    # ========================= 
-
-  
-
-    - name: 19. Setting permissions on /etc/passwd 
-
-      file: 
-
-        path: /etc/passwd 
-
-        mode: '0644' 
-
-      check_mode: yes 
-
-  
-
-    - name: 20.  Setting permissions on /etc/shadow 
-
-      file: 
-
-        path: /etc/shadow 
-
-        mode: '0000' 
-
-      check_mode: yes 
-
-  
-
-    - name: 21. Setting permissions on /etc/gshadow 
-
-      file: 
-
-        path: /etc/gshadow 
-
-        mode: '0000' 
-
-      check_mode: yes 
+- name: Simulation not strict system hardening playbook
+  hosts: all
+  become: yes
+
+  vars:
+    backup_dir: /var/backups/hardening
+
+  tasks:
+
+    # =========================
+    # Backup
+    # =========================
+
+    - name: 1. Create backup 
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+      # STIG ID: N/A
+
+    - name: 2. Backup SSH configuration
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: "{{ backup_dir }}/sshd_config.bak"
+        remote_src: yes
+      # STIG ID: N/A
+
+    - name: 3. Backup passwd, shadow, gshadow
+      copy:
+        src: "{{ item }}"
+        dest: "{{ backup_dir }}/{{ item | basename }}.bak"
+        remote_src: yes
+      loop:
+        - /etc/passwd
+        - /etc/shadow
+        - /etc/gshadow
+      # STIG ID: N/A
+
+    # =========================
+    # SSH Hardening (Simulation)
+    # =========================
+
+    - name: 4. Enabling SSH key authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PubkeyAuthentication'
+        line: 'PubkeyAuthentication yes'
+      # STIG ID: SV-204428r1_rule
+
+    - name: 5. Root login via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin yes'
+      # STIG ID: SV-204430r1_rule (NOT compliant)
+
+    - name: 6. Enabling password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication yes'
+      # STIG ID: SV-204434r1_rule (NOT compliant)
+
+    - name: 7. SSH idle timeout
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?ClientAliveInterval'
+        line: 'ClientAliveInterval 300'
+      # STIG ID: SV-204442r1_rule
+
+    - name: 8. SSH max sessions
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?MaxSessions'
+        line: 'MaxSessions 10'
+      # STIG ID: SV-204444r1_rule
+
+    - name: 9. Enabling SSH logging verbosity
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?LogLevel'
+        line: 'LogLevel VERBOSE'
+      # STIG ID: SV-204446r1_rule
+
+    - name: 10. Validate SSH configuration
+      command: sshd -t
+      register: sshd_validation
+      ignore_errors: yes
+      # STIG ID: N/A
+
+    - name: 11. Show SSH config validation result
+      debug:
+        var: sshd_validation.stdout
+      # STIG ID: N/A
+
+    # =========================
+    # Package / Updates
+    # =========================
+
+    - name: 12. Updating all packages
+      package:
+        name: '*'
+        state: latest
+      # STIG ID: SV-204506r1_rule
+
+    - name: 13. Installing automatic updates (Ubuntu)
+      package:
+        name: unattended-upgrades
+        state: present
+      when: ansible_os_family == "Debian"
+      # STIG ID: UBA-PKG-00002
+
+    # =========================
+    # Firewall
+    # =========================
+
+    - name: 14. Allow HTTP and HTTPS in firewalld
+      firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        state: enabled
+      loop:
+        - 80
+        - 443
+      when: ansible_os_family == "RedHat"
+      # STIG ID: SV-204540r1_rule (partial)
+
+    - name: 15. Allow HTTP and HTTPS in UFW
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - 80
+        - 443
+      when: ansible_os_family == "Debian"
+      # STIG ID: UBA-FIRE-00001 (partial)
+
+    # =========================
+    # File Permissions (Simulation)
+    # =========================
+
+    - name: 16. Setting permissions on /etc/passwd
+      file:
+        path: /etc/passwd
+        mode: '0644'
+      check_mode: yes
+      # STIG ID: SV-204562r1_rule
+
+    - name: 17. Setting permissions on /etc/shadow
+      file:
+        path: /etc/shadow
+        mode: '0000'
+      check_mode: yes
+      # STIG ID: SV-204564r1_rule (overly restrictive)
+
+    - name: 18. Setting permissions on /etc/gshadow
+      file:
+        path: /etc/gshadow
+        mode: '0000'
+      check_mode: yes
+      # STIG ID: SV-204566r1_rule (overly restrictive)
+
+    # =========================
+    # Added to reach 20 (REAL STIG CONTROLS)
+    # =========================
+
+    - name: 19. Ensure SSH service is enabled
+      service:
+        name: sshd
+        state: started
+        enabled: yes
+      # STIG ID: SV-204418r1_rule
+
+    - name: 20. Ensure no empty passwords
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitEmptyPasswords'
+        line: 'PermitEmptyPasswords no'
+      # STIG ID: SV-204432r1_rule
