@@ -230,7 +230,7 @@
 
       firewalld: 
 
-        port: "{{ item }}" 
+        port: "{{ item }}/tcp" 
 
         permanent: yes 
 
