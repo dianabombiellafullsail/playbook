@@ -45,6 +45,9 @@
         path: /etc/ssh/sshd_config
         regexp: '^#?PubkeyAuthentication'
         line: 'PubkeyAuthentication yes'
+        state: present
+        backup: yes
+      notify: Restart SSH
       # STIG ID: SV-204428r1_rule
 
     - name: 5. Root login via SSH
