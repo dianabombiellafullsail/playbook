@@ -1,0 +1,311 @@
+--- 
+
+- name: Simulation not strict system hardening playbook 
+
+  hosts: all 
+
+  become: yes 
+
+  vars: 
+
+    backup_dir: /var/backups/hardening 
+
+  
+
+  tasks: 
+
+  
+
+    # ========================= 
+
+    # Backup Critical Configs 
+
+    # ========================= 
+
+  
+
+    - name: 1. Create backup directory 
+
+      file: 
+
+        path: "{{ backup_dir }}" 
+
+        state: directory 
+
+        mode: '0755' 
+
+     # check_mode: yes 
+
+  
+
+    - name: 2. Backup SSH configuration 
+
+      copy: 
+
+        src: /etc/ssh/sshd_config 
+
+        dest: "{{ backup_dir }}/sshd_config.bak" 
+
+        remote_src: yes 
+
+     # check_mode: yes 
+
+  
+
+    - name: 4. Backup passwd, shadow, gshadow 
+
+      copy: 
+
+        src: "{{ item }}" 
+
+        dest: "{{ backup_dir }}/{{ item | basename }}.bak" 
+
+        remote_src: yes 
+
+      loop: 
+
+        - /etc/passwd 
+
+        - /etc/shadow 
+
+        - /etc/gshadow 
+
+    #  check_mode: yes 
+
+  
+
+    # ========================= 
+
+    # SSH Hardening  - Safe, allows root/password) 
+
+    # ========================= 
+
+  
+
+    - name: 5. Enabling SSH key authentication 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?PubkeyAuthentication' 
+
+        line: 'PubkeyAuthentication yes' 
+
+     # check_mode: yes 
+
+  
+
+    - name: 6.  Root login via SSH 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?PermitRootLogin' 
+
+        line: 'PermitRootLogin yes' 
+
+     # check_mode: yes 
+
+  
+
+    - name: 7. Enabling password authentication 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?PasswordAuthentication' 
+
+        line: 'PasswordAuthentication yes' 
+
+     # check_mode: yes 
+
+  
+
+    - name: 8.  SSH idle timeout 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?ClientAliveInterval' 
+
+        line: 'ClientAliveInterval 300' 
+
+     # check_mode: yes 
+
+  
+
+    - name: 9.  SSH max sessions 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?MaxSessions' 
+
+        line: 'MaxSessions 10' 
+
+      #check_mode: yes 
+
+  
+
+    - name: 10. Enabling SSH logging verbosity 
+
+      lineinfile: 
+
+        path: /etc/ssh/sshd_config 
+
+        regexp: '^#?LogLevel' 
+
+        line: 'LogLevel VERBOSE' 
+
+      #check_mode: yes 
+
+  
+
+    - name: 11. Validate SSH configuration 
+
+      command: sshd -t 
+
+      register: sshd_validation 
+
+      ignore_errors: yes 
+
+  
+
+    - name: 12. Show SSH config validation result 
+
+      debug: 
+
+        var: sshd_validation.stdout 
+
+  
+
+    # ========================= 
+
+    # Package / Updates 
+
+    # ========================= 
+
+  
+
+    - name: 13. Updating all packages 
+
+      package: 
+
+        name: '*' 
+
+        state: latest 
+
+     # check_mode: yes 
+
+  
+
+    - name: 14. Installing automatic updates (Ubuntu) 
+
+      package: 
+
+        name: unattended-upgrades 
+
+        state: present 
+
+      when: ansible_os_family == "Debian" 
+
+     # check_mode: yes 
+
+  
+
+    # ========================= 
+
+    # Firewall  
+
+    # ========================= 
+
+    
+
+    - name: Allow HTTP and HTTPS in firewalld 
+
+      firewalld: 
+
+        port: "{{ item }}" 
+
+        permanent: yes 
+
+        state: enabled 
+
+      loop: 
+
+        - 80 
+
+        - 443 
+
+      when: ansible_os_family == "RedHat" 
+
+  
+
+    - name: Allow HTTP and HTTPS in UFW 
+
+      ufw: 
+
+        rule: allow 
+
+        port: "{{ item }}" 
+
+        proto: tcp 
+
+      loop: 
+
+        - 80 
+
+        - 443 
+
+      when: ansible_os_family == "Debian"  
+
+  
+
+  
+
+    # ========================= 
+
+    # File Permissions (Simulation) 
+
+    # ========================= 
+
+  
+
+    - name: 19. Setting permissions on /etc/passwd 
+
+      file: 
+
+        path: /etc/passwd 
+
+        mode: '0644' 
+
+      check_mode: yes 
+
+  
+
+    - name: 20.  Setting permissions on /etc/shadow 
+
+      file: 
+
+        path: /etc/shadow 
+
+        mode: '0000' 
+
+      check_mode: yes 
+
+  
+
+    - name: 21. Setting permissions on /etc/gshadow 
+
+      file: 
+
+        path: /etc/gshadow 
+
+        mode: '0000' 
+
+      check_mode: yes 
