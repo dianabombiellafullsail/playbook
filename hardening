@@ -167,7 +167,7 @@
 
     - name: 19. Ensure SSH service is enabled
       service:
-        name: sshd
+        name: "{{ 'sshd' if ansible_os_family == 'RedHat' else 'ssh' }}"
         state: started
         enabled: yes
       # STIG ID: SV-204418r1_rule
