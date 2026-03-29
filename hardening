@@ -1,3 +1,14 @@
+# WARNING: HIGH-RISK PLAYBOOK
+# ---------------------------------------------------------
+# This playbook sets DISA STIG SSH hardening rules.
+# 
+# 
+# Running this in a production or non-lab environment can
+# immediately lock out access if setup incorrectly or even if fully STIG compliant.
+# 
+# At your own risk**.
+# ---------------------------------------------------------
+
 - name: Simulation not strict system hardening playbook
   hosts: all
   become: yes
