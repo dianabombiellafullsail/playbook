@@ -180,4 +180,8 @@
         path: /etc/ssh/sshd_config
         regexp: '^#?PermitEmptyPasswords'
         line: 'PermitEmptyPasswords no'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart SSH
       # STIG ID: SV-204432r1_rule
