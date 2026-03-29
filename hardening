@@ -153,14 +153,14 @@
     - name: 17. Setting permissions on /etc/shadow
       file:
         path: /etc/shadow
-        mode: '0000'
+        mode: '0400'
       check_mode: yes
       # STIG ID: SV-204564r1_rule (overly restrictive)
 
     - name: 18. Setting permissions on /etc/gshadow
       file:
         path: /etc/gshadow
-        mode: '0000'
+        mode: '0400'
       check_mode: yes
       # STIG ID: SV-204566r1_rule (overly restrictive)
 
