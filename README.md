@@ -1,4 +1,4 @@
-# apt update && apt upgrade -y
+apt update && apt upgrade -y
 # apt install -y ansible
 # /etc/ansible/hosts/
 # platform.ini 
