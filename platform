@@ -1,5 +1,5 @@
 # nano platform.ini
-# ansible -i inventory.ini -m ping
+# ansible -i platform.ini -m ping
 # update IP for each machine 
 
 [ubuntu]
