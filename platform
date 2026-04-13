@@ -1,4 +1,4 @@
-# nano platform.ini
+# platform.ini
 # ansible -i platform.ini -m ping
 # update IP for each machine 
 
