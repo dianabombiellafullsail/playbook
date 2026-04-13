@@ -6,7 +6,7 @@
 #ansible all -i platform.ini -m ping
 #/etc/ansible/playbook
 #playbook.yml
-
+#ansible-playbook playbook.yml
 
 
 
