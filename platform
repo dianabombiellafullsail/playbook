@@ -1,5 +1,6 @@
 # platform.ini
 # ansible -i platform.ini -m ping
+# ansible all -i platform.ini -m ping
 # update IP for each machine 
 
 [ubuntu]
