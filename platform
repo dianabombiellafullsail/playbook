@@ -1,1 +1,12 @@
+# nano platform.ini
+# ansible -i inventory.ini -m ping
+# update IP for each machine 
 
+[ubuntu]
+147.182.231.122 ansible_user=node  ansible_ssh_private_key_file=/root/.ssh/
+
+[rocky]
+147.182.230.30 ansible_user=root ansible_ssh_private_key_file=/root/.ssh/
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
