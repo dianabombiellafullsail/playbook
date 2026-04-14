@@ -17,11 +17,16 @@
     # Backup
     # =========================
 
-    - name: 1. Create backup
-      file:
+     - name: 1. Create backup
+      become: yes
+      ansible.builtin.file:
         path: "{{ backup_dir }}"
         state: directory
         mode: '0755'
+      register: backup_dir_created
+      retries: 3
+      delay: 1
+      until: backup_dir_created is succeeded
 
     - name: 2. Backup SSH configuration
       copy:
