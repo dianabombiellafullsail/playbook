@@ -1,10 +1,9 @@
 # WARNING: HIGH-RISK PLAYBOOK
 # ---------------------------------------------------------
-# This playbook sets DISA STIG SSH hardening rules.
-# Running in production may lock you out.
+# SSH + system hardening for Ubuntu + Rocky
 # ---------------------------------------------------------
 
-- name: Simulation not strict system hardening playbook
+- name: System hardening playbook (Ubuntu + Rocky)
   hosts: all
   become: yes
 
@@ -17,157 +16,192 @@
     # Backup
     # =========================
 
-     - name: 1. Create backup
-      become: yes
+    - name: 1. Create backup directory
       ansible.builtin.file:
         path: "{{ backup_dir }}"
         state: directory
         mode: '0755'
-      register: backup_dir_created
-      retries: 3
-      delay: 1
-      until: backup_dir_created is succeeded
 
     - name: 2. Backup SSH configuration
-      copy:
+      ansible.builtin.copy:
         src: /etc/ssh/sshd_config
-        dest: "{{ backup_dir }}"
+        dest: "{{ backup_dir }}/sshd_config.bak"
         remote_src: yes
 
-    - name: 3. Backup passwd, shadow, gshadow
-      copy:
-        src: "{{ item }}"
-        dest: "{{ backup_dir }}/{{ item | basename }}.bak"
+    - name: 3. Backup passwd file
+      ansible.builtin.copy:
+        src: /etc/passwd
+        dest: "{{ backup_dir }}/passwd.bak"
         remote_src: yes
-      loop:
-        - /etc/passwd
-        - /etc/shadow
-        - /etc/gshadow
+
+    - name: 4. Backup shadow file
+      ansible.builtin.copy:
+        src: /etc/shadow
+        dest: "{{ backup_dir }}/shadow.bak"
+        remote_src: yes
+
+    - name: 5. Backup gshadow file
+      ansible.builtin.copy:
+        src: /etc/gshadow
+        dest: "{{ backup_dir }}/gshadow.bak"
+        remote_src: yes
 
     # =========================
-    # SSH Hardening (Simulation)
+    # SSH Hardening
     # =========================
 
-    - name: 4. Enabling SSH key authentication
-      lineinfile:
+    - name: 6. Enable SSH key authentication
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PubkeyAuthentication'
         line: 'PubkeyAuthentication yes'
         backup: yes
       notify: Restart SSH
 
-    - name: 5. Root login via SSH
-      lineinfile:
+    - name: 7. Root login via SSH
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PermitRootLogin'
         line: 'PermitRootLogin yes'
 
-    - name: 6. Enabling password authentication
-      lineinfile:
+    - name: 8. Password authentication
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication yes'
 
-    - name: 7. SSH idle timeout
-      lineinfile:
+    - name: 9. SSH idle timeout
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?ClientAliveInterval'
         line: 'ClientAliveInterval 300'
 
-    - name: 8. SSH max sessions
-      lineinfile:
+    - name: 10. SSH max sessions
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?MaxSessions'
         line: 'MaxSessions 10'
 
-    - name: 9. Enabling SSH logging verbosity
-      lineinfile:
+    - name: 11. SSH log level
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?LogLevel'
         line: 'LogLevel VERBOSE'
 
-    - name: 10. Validate SSH configuration
-      command: sshd -t
+    - name: 12. Validate SSH config
+      ansible.builtin.command: sshd -t
       register: sshd_validation
-      ignore_errors: yes
+      changed_when: false
+      failed_when: sshd_validation.rc != 0
 
-    - name: 11. Show SSH config validation result
-      debug:
+    - name: 13. Show SSH validation result
+      ansible.builtin.debug:
         var: sshd_validation.stdout
 
     # =========================
-    # Package / Updates
+    # Package Updates
     # =========================
 
-    - name: 12. Updating all packages
-      package:
+    - name: 14. Update all packages
+      ansible.builtin.package:
         name: '*'
         state: latest
 
-    - name: 13. Installing automatic updates (Ubuntu)
-      package:
+    - name: 15. Install automatic updates (Ubuntu/Debian)
+      ansible.builtin.package:
         name: unattended-upgrades
         state: present
-      when: ansible_os_family == "Debian"
+      when: ansible_facts['os_family'] == "Debian"
 
     # =========================
-    # Firewall
+    # Firewall dependencies + service (FIXED)
     # =========================
 
-    - name: 14. Allow HTTP and HTTPS in firewalld
-      firewalld:
-        port: "{{ item }}/tcp"
+    - name: 16. Install firewalld dependencies (RedHat)
+      ansible.builtin.package:
+        name:
+          - firewalld
+          - python3-firewall
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Ensure firewalld is active (RedHat)
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == "RedHat"
+
+    # =========================
+    # Firewall rules (RedHat - FIXED)
+    # =========================
+
+    - name: Open firewall ports (firewalld)
+      ansible.posix.firewalld:
+        port: "{{ item }}"
         permanent: yes
         state: enabled
       loop:
-        - 80
-        - 443
-      when: ansible_os_family == "RedHat"
+        - 80/tcp
+        - 443/tcp
+      when: ansible_facts['os_family'] == "RedHat"
 
-    - name: 15. Allow HTTP and HTTPS in UFW
-      ufw:
+    - name: Reload firewalld
+      ansible.builtin.command: firewall-cmd --reload
+      changed_when: false
+      when: ansible_facts['os_family'] == "RedHat"
+
+    # =========================
+    # Firewall (Debian)
+    # =========================
+
+    - name: Allow HTTP in UFW (80)
+      community.general.ufw:
         rule: allow
-        port: "{{ item }}"
+        port: "80"
         proto: tcp
-      loop:
-        - 80
-        - 443
-      when: ansible_os_family == "Debian"
+        state: enabled
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Allow HTTPS in UFW (443)
+      community.general.ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+        state: enabled
+      when: ansible_facts['os_family'] == "Debian"
 
     # =========================
-    # File Permissions (Simulation)
+    # File Permissions
     # =========================
 
-    - name: 16. Setting permissions on /etc/passwd
-      file:
+    - name: 21. Set /etc/passwd permissions
+      ansible.builtin.file:
         path: /etc/passwd
         mode: '0644'
-      check_mode: yes
 
-    - name: 17. Setting permissions on /etc/shadow
-      file:
+    - name: 22. Set /etc/shadow permissions
+      ansible.builtin.file:
         path: /etc/shadow
         mode: '0400'
-      check_mode: yes
 
-    - name: 18. Setting permissions on /etc/gshadow
-      file:
+    - name: 23. Set /etc/gshadow permissions
+      ansible.builtin.file:
         path: /etc/gshadow
         mode: '0400'
-      check_mode: yes
 
     # =========================
     # Final controls
     # =========================
 
-    - name: 19. Ensure SSH service is enabled
-      service:
-        name: "{{ 'sshd' if ansible_os_family == 'RedHat' else 'ssh' }}"
+    - name: 24. Ensure SSH service is enabled
+      ansible.builtin.service:
+        name: "{{ 'sshd' if ansible_facts['os_family'] == 'RedHat' else 'ssh' }}"
         state: started
         enabled: yes
 
-    - name: 20. Ensure no empty passwords
-      lineinfile:
+    - name: 25. Disable empty passwords
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PermitEmptyPasswords'
         line: 'PermitEmptyPasswords no'
@@ -177,6 +211,6 @@
 
   handlers:
     - name: Restart SSH
-      service:
-        name: "{{ 'sshd' if ansible_os_family == 'RedHat' else 'ssh' }}"
+      ansible.builtin.service:
+        name: "{{ 'sshd' if ansible_facts['os_family'] == 'RedHat' else 'ssh' }}"
         state: restarted
